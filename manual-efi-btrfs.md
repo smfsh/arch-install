@@ -30,7 +30,9 @@ Use the regular installer through the network setup... or...
 
 Konami Code: o, y, n, enter, enter, +512M, ef00, n, enter, enter, enter, enter, w, y.
 
-(Adjust as necessary, but this will leave you with a 512Mb formatted EFI partition.)
+Adjust as necessary, but this will leave you with a 512Mb formatted EFI partition. Be sure to use the right device located in `dev`. This could be something like `/dev/nvme0n1` if you're using an NVME type SSD.
+
+For the rest of the document, pay attention to partitions. This guide utilizes two partitions. They may be identified like `/dev/sda1` and `/dev/sda2` or they could be identified like `/dev/nvme0n1p1` and `/dev/nvme0n1p2`.
 
 **BTRFS Setup**
 ```
@@ -60,7 +62,7 @@ The above commented sections are because BTRFS is yet to support recursive snaps
 #!/bin/sh
 
 mkdir /mnt/{proc,dev,sys,var/lib/pacman}
-pacstrap /mnt base base-devel btrfs-progs haveged zsh vim
+pacstrap /mnt base base-devel btrfs-progs zsh vim git
 mount -o bind /dev /mnt/dev
 mount -t sysfs none /mnt/sys
 mount -t proc none /mnt/proc
@@ -68,7 +70,7 @@ mount -t proc none /mnt/proc
 
 **EFI System Partition**
 
-Check "/sys/firmware/efi" to see if it exists. If this directory does not exist, you're not on and EFI boot. You must be on EFI for this to work. Additionally, run efibootmgr to ensure that you do not have any garbage entries from previous installs. If you do, you can remove them with "efibootmgr -B -b 001A". Replace the hex as appropriate.
+Check "/sys/firmware/efi" to see if it exists. If this directory does not exist, you're not on and EFI boot. You must be on EFI for this to work. Additionally, run efibootmgr to ensure that you do not have any garbage entries from previous installs. If you do, you can remove them with `efibootmgr -B -b 001A`. Replace the hex as appropriate. You can view old entries with `efibootmgr -v`.
 
 ```
 # echo "initrd=\initramfs-linux-fallback.img root=/dev/sda2 rootflags=subvol=__active ro" | iconv -f ascii -t ucs2 > bootfallback
@@ -77,57 +79,55 @@ Check "/sys/firmware/efi" to see if it exists. If this directory does not exist,
 # efibootmgr --create --gpt --disk /dev/sda --part 1  --label "Arch Linux" --loader '\vmlinuz-linux' --append-binary-args boot
 ```
 
-**Install Yaourt and mkinitcpio Hook**
+Or if you're on an NVME storage device:
+
+```
+# echo "initrd=\initramfs-linux-fallback.img root=/dev/nvme0n1p2 rootflags=subvol=__active ro" | iconv -f ascii -t ucs2 > bootfallback
+# efibootmgr --create --gpt --disk /dev/nvme0n1 --part 1  --label "Arch Linux Fallback" --loader '\vmlinuz-linux' --append-binary-args bootfallback
+# echo "initrd=\initramfs-linux.img root=/dev/nvme0n1p2 rootflags=subvol=__active ro" | iconv -f ascii -t ucs2 > boot
+# efibootmgr --create --gpt --disk /dev/nvme0n1 --part 1  --label "Arch Linux" --loader '\vmlinuz-linux' --append-binary-args boot
+```
+
+**Install Yay and mkinitcpio Hook**
 ```
 # pacman-key --init --gpgdir /mnt/etc/pacman.d/gnupg
 # pacman-key --populate archlinux --gpgdir /mnt/etc/pacman.d/gnupg
 # cp /etc/resolv.conf /mnt/etc/resolv.conf
 # chroot /mnt
-# vim /etc/pacman.conf
 ```
 
-Uncomment the multilib repo and comment the SigLevel so that signature checking is disabled.
-
-Add Arch Linux France's Repo to the list: 
+Create your standard user so we can use Yay without root. Replace `username` with your user.
 
 ```
-[archlinuxfr]
-Server = http://repo.archlinux.fr/$arch
-```
-
-Uncomment a mirror:
-
-```
-# vim /etc/pacman.d/mirrorlist
-```
-
-Create a regular user so we can use yaourt replacing "milo" appropriately.
-
-```
-# useradd -m -g users -G wheel milo
+# useradd -m -g users -G wheel username
 # passwd
-# su milo
+# visudo 
 ```
 
-Install yaourt and the btrfs-hooks:
+Edit the sudoers file to allow wheel group users to use sudo.
+
+Switch to our new user and set password:
 
 ```
-# pacman -Syy yaourt
-# yaourt -S mkinitcpio-btrfs
+# su username
+# passwd
+```
+
+Install Yay and then the btrfs hooks for early init:
+
+```
+# git clone https://aur.archlinux.org/yay.git
+# cd yay
+# makepkg -si
+# yay -S mkinitcpio-btrfs
 # exit
 # vim /etc/mkinitcpio.conf
 ```
 
-Add "crc32c" to the MODULES section. Add "btrfs_advanced" to the end of the HOOKS section and remove the fsck hook.
+Add `crc32c` to the MODULES section. Add `btrfs_advanced` to the end of the HOOKS section and remove the `fsck` hook. Save the file and regenerate the initial ramdisk.
 
 ```
 # mkinitcpio -p linux
-```
-
-Note the btrfs ID for your __active subvolume:
-
-```
-btrfs subvolume list -t /
 ```
 
 **Edit The fstab File**
@@ -151,12 +151,6 @@ Set the proper locale information:
 # locale-gen
 ```
 
-And after the first boot, run this:
-
-```
-# localectl set-locale LANG="en_US.utf8"
-# hostnamectl set-hostname MilosThinkPad
-```
 
 **Prepare for System Reboot**
 
@@ -168,4 +162,10 @@ And after the first boot, run this:
 # reboot
 ```
 
-Hold your breath... 
+After the first boot, login as root, set locale and hostname:
+
+```
+# localectl set-locale LANG="en_US.utf8"
+# hostnamectl set-hostname MilosThinkPad
+# reboot
+```
