@@ -58,11 +58,13 @@ The above commented sections are because BTRFS is yet to support recursive snaps
 
 **System Preparation and Installation**
 
+Packages in the `pacstrap` command can be modified, but you must have `base`, `base-devel`, `btrfs-progs`, `linux`, and `go`. It is strongly recommended to install all of the ones listed in order to get up to speed quickly.
+
 ```
 #!/bin/sh
 
 mkdir /mnt/{proc,dev,sys,var/lib/pacman}
-pacstrap /mnt base base-devel btrfs-progs zsh vim git
+pacstrap /mnt base base-devel linux linux-headers linux-api-headers linux-firmware intel-ucode btrfs-progs zsh vim git networkmanager go
 mount -o bind /dev /mnt/dev
 mount -t sysfs none /mnt/sys
 mount -t proc none /mnt/proc
@@ -70,7 +72,7 @@ mount -t proc none /mnt/proc
 
 **EFI System Partition**
 
-Check "/sys/firmware/efi" to see if it exists. If this directory does not exist, you're not on and EFI boot. You must be on EFI for this to work. Additionally, run efibootmgr to ensure that you do not have any garbage entries from previous installs. If you do, you can remove them with `efibootmgr -B -b 001A`. Replace the hex as appropriate. You can view old entries with `efibootmgr -v`.
+Check "/sys/firmware/efi" to see if it exists. If this directory does not exist, you're not booted with EFI. You must be on EFI for this to work. Additionally, run efibootmgr to ensure that you do not have any garbage entries from previous installs. If you do, you can remove them with `efibootmgr -B -b 001A`. Replace the hex as appropriate. You can view old entries with `efibootmgr -v`.
 
 ```
 # echo "initrd=\initramfs-linux-fallback.img root=/dev/sda2 rootflags=subvol=__active ro" | iconv -f ascii -t ucs2 > bootfallback
@@ -88,6 +90,15 @@ Or if you're on an NVME storage device:
 # efibootmgr --create --gpt --disk /dev/nvme0n1 --part 1  --label "Arch Linux" --loader '\vmlinuz-linux' --append-binary-args boot
 ```
 
+If you have multiple drives, it is recommended to use [UUIDs](https://wiki.archlinux.org/index.php/Persistent_block_device_naming) to identify the drives:
+
+```
+echo "initrd=\initramfs-linux-fallback.img root=PARTUUID=a2b86018-7aa7-488c-a349-04532bcff7c3 rootflags=subvol=__active ro" | iconv -f ascii -t ucs2 > bootfallback
+efibootmgr --create --gpt --disk /dev/nvme1n1 --part 1  --label "Arch Linux Fallback" --loader '\vmlinuz-linux' --append-binary-args bootfallback
+echo "initrd=\initramfs-linux.img root=PARTUUID=a2b86018-7aa7-488c-a349-04532bcff7c3 rootflags=subvol=__active ro" | iconv -f ascii -t ucs2 > boot
+efibootmgr --create --gpt --disk /dev/nvme1n1 --part 1  --label "Arch Linux" --loader '\vmlinuz-linux' --append-binary-args boot
+```
+
 **Install Yay and mkinitcpio Hook**
 ```
 # pacman-key --init --gpgdir /mnt/etc/pacman.d/gnupg
@@ -96,7 +107,7 @@ Or if you're on an NVME storage device:
 # chroot /mnt
 ```
 
-Create your standard user so we can use Yay without root. Replace `username` with your user.
+Create your standard user so we can use Yay without root. Replace `username` with your user. Set the root password.
 
 ```
 # useradd -m -g users -G wheel username
@@ -106,11 +117,11 @@ Create your standard user so we can use Yay without root. Replace `username` wit
 
 Edit the sudoers file to allow wheel group users to use sudo.
 
-Switch to our new user and set password:
+Set the user password and change to the new user. Replace `username` with your user.
 
 ```
+# passwd username
 # su username
-# passwd
 ```
 
 Install Yay and then the btrfs hooks for early init:
@@ -141,7 +152,15 @@ Should look like this... mostly...
 ```
 /dev/sda2 / btrfs defaults,noatime 0 0
 /dev/sda2 /var/lib/Arch btrfs defaults,noatime,subvol=/__active 0 0
-/dev/sda1 /boot vfat auto defaults 0 0
+/dev/sda1 /boot vfat defaults 0 0
+```
+
+Or, if you have multiple drives, it is recommended to use UUIDs to identify the drives. You can get the drive UUIDs by running `blkid` or `ls -l /dev/disk/by-partuuid `. This looks like this:
+
+```
+PARTUUID=a2b86018-7aa7-488c-a349-04532bcff7c3 / btrfs defaults,noatime 0 0
+PARTUUID=a2b86018-7aa7-488c-a349-04532bcff7c3 /var/lib/Arch btrfs defaults,noatime,subvol=/__active 0 0
+PARTUUID=0bedc9bf-fe60-4125-91b4-7ba7f0ec756f /boot vfat defaults 0 0
 ```
 
 Set the proper locale information:
