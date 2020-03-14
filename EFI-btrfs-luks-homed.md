@@ -227,7 +227,7 @@ reboot
 
 After the first boot, login as root, set locale and hostname:
 ```shell script
-hostnamectl set-hostname MilosThinkPad
+hostnamectl set-hostname MyHostname
 sed -i '/^#en_US.UTF/s/^#//' /etc/locale.gen
 locale-gen
 localectl set-locale LANG="en_US.utf8"
