@@ -163,7 +163,7 @@ genfstab -U /mnt >> /mnt/etc/fstab
 
 **Create Personal User**
 
-Replace `username` below with 
+Replace `username` below with your own username. 
 
 ```shell script
 homectl create username --shell=/usr/bin/zsh --storage=subvolume -G wheel
