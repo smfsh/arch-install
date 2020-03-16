@@ -233,3 +233,14 @@ locale-gen
 localectl set-locale LANG="en_US.utf8"
 reboot
 ```
+
+**Recovery Steps**
+
+If you need to get back into the system from a live boot, run these commands:
+
+```shell script
+cryptsetup open /dev/sda2 secure
+mount -o subvol=@ /dev/mapper/secure /mnt 
+mount /dev/sda1 /mnt/boot 
+arch-chroot /mnt /usr/bin/zsh
+```
