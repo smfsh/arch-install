@@ -163,6 +163,8 @@ genfstab -U /mnt >> /mnt/etc/fstab
 
 **Create Personal User**
 
+Note: this section is currently experiencing massive development in the community. Check out the `systemd-homed` [page on the ArchWiki](https://wiki.archlinux.org/index.php/Systemd-homed) to make sure you're following the latest advice. My advice is "_don't do this, there's so much more to live for_" and create a regular user with `useradd -m -G wheel -s /usr/bin/zsh username`.
+
 Replace `username` below with your own username. 
 
 ```shell script
@@ -194,8 +196,6 @@ session   optional    pam_permit.so
 ```
 
 Save the file by pressing `esc` followed by `:wq`.
-
-This section is being highly developed and can likely change quickly. Check out the `systemd-homed` [page on the ArchWiki](https://wiki.archlinux.org/index.php/Systemd-homed) to make sure you're following the latest advice.
 
 **Install Yay for AUR Packages**
 ```shell script
