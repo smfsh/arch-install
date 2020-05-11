@@ -117,7 +117,7 @@ mkinitcpio -p linux
 
 ```shell script
 bootctl --path=/boot install
-blkid -o name,uuid
+blkid
 ```
 
 Find the entry for `/dev/sda2` (or equivalent) and note the UUID. It will be used below.
@@ -136,7 +136,7 @@ initrd /initramfs-linux.img
 options rd.luks.name=ROOT_UUID=secure root=/dev/mapper/secure rootflags=subvol=@ rd.luks.options=discard rw
 ```
 
-Note: if you are on an non-Intel processor, remote the entire `initrd /intel-ucode.img` line.
+Note: if you are on an non-Intel processor, remove the entire `initrd /intel-ucode.img` line.
 
 Save the file by pressing `esc` followed by `:wq`.
 
@@ -158,14 +158,16 @@ Save the file by pressing `esc` followed by `:wq`.
 
 **Generate an fstab File**
 ```shell script
+exit
 genfstab -U /mnt >> /mnt/etc/fstab
+arch-chroot /mnt /usr/bin/zsh
 ```
 
 **Create Personal User**
 
-Note: this section is currently experiencing massive development in the community. Check out the `systemd-homed` [page on the ArchWiki](https://wiki.archlinux.org/index.php/Systemd-homed) to make sure you're following the latest advice. My advice is "_don't do this, there's so much more to live for_" and create a regular user with `useradd -m -G wheel -s /usr/bin/zsh username`.
+Note: this section is currently experiencing massive development in the community. Check out the `systemd-homed` [page on the ArchWiki](https://wiki.archlinux.org/index.php/Systemd-homed) to make sure you're following the latest advice. My advice is "_don't do this, there's so much more to live for_" and create a regular user with `useradd -m -G wheel -s /usr/bin/zsh username` followed by setting the password: `passwd username`.
 
-Replace `username` below with your own username. 
+If you still want to continue, read on and replace `username` below with your own username. 
 
 ```shell script
 homectl create username --shell=/usr/bin/zsh --storage=subvolume -G wheel
@@ -197,16 +199,10 @@ session   optional    pam_permit.so
 
 Save the file by pressing `esc` followed by `:wq`.
 
-**Install Yay for AUR Packages**
-```shell script
-git clone https://aur.archlinux.org/yay.git
-cd yay
-makepkg -si
-cd ../
-rm -rf yay
-```
+**Finalize Root Setup**
 
-**Finalize System Config**
+Set the root password and configure sudo options.
+
 ```shell script
 passwd
 EDITOR=vim visudo
@@ -218,9 +214,23 @@ Edit the file by pressing `i` and navigating with arrow keys. Find this line and
 
 Save the file by pressing `esc` followed by `:wq`.
 
+**Install Yay for AUR Packages**
+
+If you have not already, change into your newly created user with `su username`, replacing _username_ with your username.
+
+```shell script
+cd ~
+git clone https://aur.archlinux.org/yay.git
+cd yay
+makepkg -si
+cd ../
+rm -rf yay
+```
+
 **Prepare for System Reboot**
 ```shell script
-exit
+exit ## to leave your user
+exit ## to leave the chroot
 umount -R /mnt
 reboot
 ```
