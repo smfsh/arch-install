@@ -235,12 +235,13 @@ umount -R /mnt
 reboot
 ```
 
-After the first boot, login as root, set locale and hostname:
+After the first boot, login as root, set locale, timezone, and hostname:
 ```shell script
 hostnamectl set-hostname MyHostname
 sed -i '/^#en_US.UTF/s/^#//' /etc/locale.gen
 locale-gen
 localectl set-locale LANG="en_US.utf8"
+ln -sf /usr/share/zoneinfo/<Region>/<City> /etc/localtime
 reboot
 ```
 
